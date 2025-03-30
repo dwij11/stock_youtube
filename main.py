@@ -64,8 +64,9 @@ try:
 except ValueError as e:
     st.error(f"Plotting error: {e}")
     # Fallback: plot only the first numeric column, excluding 'Date_'
-    first_numeric_col = next((col for col in data.columns if pd.api.types.is_numeric_dtype(data[col]) and col != 'Date_'), None)
-    if first_numeric_col:
+    numeric_cols = [col for col in data.columns if pd.api.types.is_numeric_dtype(data[col]) and col != 'Date_']
+    if numeric_cols:
+        first_numeric_col = numeric_cols[0]
         fig = px.line(data, x='Date', y=first_numeric_col, title=f'Plotting {first_numeric_col} only', width=1000, height=600)
         st.plotly_chart(fig)
     else:
@@ -110,7 +111,7 @@ st.write("Model selected:", selected_model)
 
 # urls of the images
 github_url = "https://img.icons8.com/fluent/48/000000/github.png"
-twitter_url = "https://img.icons8.com/color/48/000000/twitter.png"
+twitter_url = "https://img.icons8.com/color/40/000000/twitter.png"
 medium_url = "https://img.icons8.com/?size=48&id=BzFWSIqh6bCr&format=png"
 
 # redirect urls
