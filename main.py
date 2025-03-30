@@ -4,6 +4,7 @@ import yfinance as yf
 from prophet import Prophet
 import streamlit as st
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt #Added import
 
 st.header('Stock Market Predictor')
 
@@ -39,7 +40,7 @@ try:
     st.subheader('Forecast Data')
     st.write(df_combined)
 
-    current_date = pd.to_datetime('today').normalize() #Corrected line
+    current_date = pd.to_datetime('today').normalize()
     if current_date in df_combined.index:
         current_data = df_combined.loc[current_date]
         current_data_df = pd.DataFrame(current_data).T
