@@ -8,66 +8,62 @@ import matplotlib.pyplot as plt
 
 st.header('Stock Market Predictor')
 
-stock = st.text_input('Enter Stock Symbol', 'GOOG')
-start = '2021-01-01'
+stock_symbol = st.text_input('Enter Stock Symbol', 'GOOG').upper()
+start_date = '2021-01-01'
+prediction_years = st.slider('Select Prediction Period (Years)', 1, 4, 2)
 
-period = st.slider('Select Prediction Period (Years)', 1, 4, 2)
 today = pd.to_datetime('today').normalize()
-end = today + pd.DateOffset(years=period)
-end_str = end.strftime('%Y-%m-%d')
+end_date = today + pd.DateOffset(years=prediction_years)
+end_date_str = end_date.strftime('%Y-%m-%d')
 
 try:
-    data = yf.download(stock, start, end_str)
+    # Fetch stock data with improved error handling
+    stock_data = yf.download(stock_symbol, start_date, end_date_str)
 
-    if data.empty:
-        st.error(f"No data found for symbol {stock} in the given date range.")
+    if stock_data.empty:
+        st.error(f"No data found for {stock_symbol}. Please check the symbol and date range.")
     else:
-        st.subheader('Stock Data')
-        st.write(data)
+        st.subheader(f'Stock Data for {stock_symbol}')
+        st.write(stock_data)
 
-        df_train = pd.DataFrame({'ds': data.index, 'y': data.Close.values.ravel()})
-        df_train['y'] = pd.to_numeric(df_train['y'], errors='coerce')
-        df_train = df_train.dropna(subset=['y'])
-        df_train['ds'] = pd.to_datetime(df_train['ds'])
+        # Prepare data for Prophet
+        df_prophet = pd.DataFrame({'ds': stock_data.index, 'y': stock_data['Close']}).reset_index(drop=True)
+        df_prophet = df_prophet.dropna(subset=['y'])
 
-        m = Prophet()
-        m.fit(df_train)
+        # Train Prophet model
+        model = Prophet()
+        model.fit(df_prophet)
 
-        # Calculate the number of days between the end date and the last training date
-        days_to_predict = (end - df_train['ds'].max()).days
+        # Generate future dataframe for predictions
+        future_days = (end_date - df_prophet['ds'].max()).days
+        future_dataframe = model.make_future_dataframe(periods=future_days)
+        forecast = model.predict(future_dataframe)
 
-        # Use the calculated number of days as the periods
-        future = m.make_future_dataframe(periods=days_to_predict)
-        forecast = m.predict(future)
+        # Display forecast data
+        st.subheader(f'Forecast for {stock_symbol}')
+        forecast_display = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].set_index('ds')
+        st.write(forecast_display)
 
-        # Rest of your code...
-        forecast['ds'] = pd.to_datetime(forecast['ds'])
-        df_combined = pd.merge(forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']], df_train[['ds', 'y']], on='ds', how='left')
-        df_combined = df_combined.rename(columns={'y': 'Original Price', 'yhat': 'Predicted Price', 'yhat_lower': 'Lower Bound', 'yhat_upper': 'Upper Bound'})
-        df_combined = df_combined.set_index('ds')
-
-        st.subheader('Forecast Data')
-        st.write(df_combined)
-
-        if today in df_combined.index:
-            current_data = df_combined.loc[today]
-            current_data_df = pd.DataFrame(current_data).T
-            st.subheader(f"Today's Data ({today.strftime('%Y-%m-%d')})")
-            st.write(current_data_df)
+        # Display today's forecast if available
+        if today in forecast_display.index:
+            st.subheader(f"Today's Forecast ({today.strftime('%Y-%m-%d')})")
+            st.write(forecast_display.loc[[today]])
         else:
-            st.write(f"No data available for today's date ({today.strftime('%Y-%m-%d')}).")
+            st.write(f"Forecast for today ({today.strftime('%Y-%m-%d')}) is not in the predicted range.")
 
+        # Plot the forecast
         fig_plotly = go.Figure()
-        fig_plotly.add_trace(go.Scatter(x=df_train['ds'], y=df_train['y'], mode='lines', name='Original Price (Training)', hovertemplate='Date: %{x}<br>Price: %{y:.2f}'))
-        fig_plotly.add_trace(go.Scatter(x=future['ds'], y=forecast['yhat'], mode='lines', name='Predicted Price', hovertemplate='Date: %{x}<br>Predicted Price: %{y:.2f}'))
-        fig_plotly.add_trace(go.Scatter(x=future['ds'], y=forecast['yhat_upper'], mode='lines', line=dict(color='rgba(0, 128, 0, 0.2)'), name='Upper Bound', hoverinfo='none'))
-        fig_plotly.add_trace(go.Scatter(x=future['ds'], y=forecast['yhat_lower'], mode='lines', line=dict(color='rgba(0, 128, 0, 0.2)'), fill='tonexty', fillcolor='rgba(0, 128, 0, 0.2)', name='Lower Bound', hoverinfo='none'))
+        fig_plotly.add_trace(go.Scatter(x=df_prophet['ds'], y=df_prophet['y'], mode='lines', name='Actual Price'))
+        fig_plotly.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'], mode='lines', name='Predicted Price'))
+        fig_plotly.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat_upper'], fill='tonexty', mode='lines', line=dict(color='rgba(0, 128, 0, 0)'), name='Upper Bound', showlegend=False))
+        fig_plotly.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat_lower'], fill='tonexty', mode='lines', line=dict(color='rgba(0, 128, 0, 0)'), name='Lower Bound', showlegend=False))
         fig_plotly.add_vline(x=today, line_width=2, line_dash="dash", line_color="red", annotation_text="Today")
-        fig_plotly.update_layout(title='Original vs. Predicted Stock Price', xaxis_title='Time', yaxis_title='Price', hovermode='x unified')
+        fig_plotly.update_layout(title=f'{stock_symbol} Stock Price Forecast', xaxis_title='Date', yaxis_title='Price')
         st.plotly_chart(fig_plotly)
 
-        fig_components = m.plot_components(forecast)
-
+        # Plot forecast components
+        st.subheader('Forecast Components')
+        fig_components = model.plot_components(forecast)
         for ax in fig_components.axes:
             ax.grid(True, linestyle='--', alpha=0.7)
             ax.spines['top'].set_visible(False)
@@ -76,7 +72,6 @@ try:
             if ax.get_legend() is not None:
                 ax.get_legend().remove()
 
-        st.subheader('Forecast Components')
         st.pyplot(fig_components)
 
         st.write("### Understanding Forecast Components")
