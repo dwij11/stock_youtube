@@ -44,30 +44,27 @@ st.write(data)
 st.header('Data Visualization')
 st.subheader('Plot of the data')
 st.write("**Note:** Select your specific date range on the sidebar, or zoom in on the plot and select your specific column")
-numeric_cols = data.columns.drop('Date').tolist()  # Convert to list
 
-for col in numeric_cols:
-    data[col] = pd.to_numeric(data[col], errors='coerce') #convert to numbers
+try:
+    # Explicit column selection
+    cols_to_plot = [col for col in data.columns if col != 'Date']
 
-data = data.replace([np.inf, -np.inf], np.nan).dropna() #remove inf and nan.
+    # Data validation
+    for col in cols_to_plot:
+        if not pd.api.types.is_numeric_dtype(data[col]):
+            raise ValueError(f"Column '{col}' is not numeric.")
 
-data = data.reset_index(drop=True) #reset index.
-
-# Debugging checks
-print("Columns in data:", data.columns)
-print("Numeric columns to plot:", numeric_cols)
-print("Data types:\n", data.dtypes)
-
-for col in numeric_cols:
-  if col not in data.columns:
-    st.error(f"Column '{col}' not found in DataFrame!")
-    st.stop()
-  if not pd.api.types.is_numeric_dtype(data[col]):
-    st.error(f"Column '{col}' is not numeric!")
-    st.stop()
-
-fig = px.line(data, x='Date', y=numeric_cols, title='Closing price of the stock', width=1000, height=600)
-st.plotly_chart(fig)
+    fig = px.line(data, x='Date', y=cols_to_plot, title='Closing price of the stock', width=1000, height=600)
+    st.plotly_chart(fig)
+except ValueError as e:
+    st.error(f"Plotting error: {e}")
+    # Fallback: plot only the first numeric column
+    first_numeric_col = next((col for col in data.columns if pd.api.types.is_numeric_dtype(data[col])), None)
+    if first_numeric_col:
+        fig = px.line(data, x='Date', y=first_numeric_col, title=f'Plotting {first_numeric_col} only', width=1000, height=600)
+        st.plotly_chart(fig)
+    else:
+        st.error("No numeric columns found for plotting.")
 
 # Add a select box to choose the column for forecasting
 column = st.selectbox('Select the column to be used for forecasting', data.columns[1:])
