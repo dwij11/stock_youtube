@@ -2,9 +2,10 @@ import streamlit as st
 from datetime import date
 
 import yfinance as yf
-from prophet import Prophet  # Corrected import
+from prophet import Prophet
 from prophet.plot import plot_plotly
 from plotly import graph_objs as go
+import pandas as pd #added import
 
 START = "2015-01-01"
 TODAY = date.today().strftime("%Y-%m-%d")
@@ -18,7 +19,7 @@ n_years = st.slider('Years of prediction:', 1, 4)
 period = n_years * 365
 
 
-@st.cache_data # corrected cache
+@st.cache_data
 def load_data(ticker):
     data = yf.download(ticker, START, TODAY)
     data.reset_index(inplace=True)
@@ -45,6 +46,12 @@ plot_raw_data()
 # Predict forecast with Prophet.
 df_train = data[['Date','Close']]
 df_train = df_train.rename(columns={"Date": "ds", "Close": "y"})
+
+# Force numeric conversion with error handling
+df_train['y'] = pd.to_numeric(df_train['y'], errors='coerce')
+
+# Remove NaN values that may have resulted from conversion
+df_train = df_train.dropna(subset=['y'])
 
 m = Prophet()
 m.fit(df_train)
