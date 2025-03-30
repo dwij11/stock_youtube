@@ -1,140 +1,102 @@
-# Import libraries
-import streamlit as st
-import yfinance as yf
-import pandas as pd
-import plotly.graph_objects as go
-import plotly.express as px
-import datetime
-from datetime import date, timedelta
-from prophet import Prophet
-import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import yfinance as yf
+from prophet import Prophet
+import streamlit as st
+import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
-# setting the side bar to collapsed taa k footer jo ha wo sahi dikhay
-st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
+st.header('Stock Market Predictor')
 
+stock = st.text_input('Enter Stock Symbol', 'GOOG').upper()
+start = st.date_input('Start Date', pd.to_datetime('2021-01-01'))
+end = st.date_input('End Date', pd.to_datetime('2025-01-31'))
 
-# Title
-app_name = 'Stock Market Forecasting App'
-st.title(app_name)
-st.subheader('This app is created to forecast the stock market price of the selected company.')
-# Add an image from an online resource
-st.image("https://img.freepik.com/free-vector/gradient-stock-market-concept_23-2149166910.jpg")
+if start >= end:
+    st.error('Error: Start date must be before end date.')
+else:
+    try:
+        data = yf.download(stock, start, end)
 
-# Take input from the user of the app about the start and end date
+        if data.empty:
+            st.error(f"No data found for stock symbol: {stock}")
+        else:
+            st.subheader('Stock Data')
+            st.write(data)
 
-# Sidebar
-st.sidebar.header('Select the parameters from below')
+            df_train = pd.DataFrame({'ds': data.index, 'y': data.Close.values.ravel()})
+            df_train['y'] = pd.to_numeric(df_train['y'], errors='coerce')
+            df_train = df_train.dropna(subset=['y'])
+            df_train['ds'] = pd.to_datetime(df_train['ds'])
 
-start_date = st.sidebar.date_input('Start date', date(2020, 1, 1))
-end_date = st.sidebar.date_input('End date', date(2020, 12, 31))
-# Add ticker symbol list
-ticker_list = ["AAPL", "MSFT", "GOOG", "GOOGL", "META", "TSLA", "NVDA", "ADBE", "PYPL", "INTC", "CMCSA", "NFLX", "PEP"]
-ticker = st.sidebar.selectbox('Select the company', ticker_list)
+            m = Prophet()
+            m.fit(df_train)
 
-# Fetch data from user inputs using yfinance library
-data = yf.download(ticker, start=start_date, end=end_date)
-# Add Date as a column to the dataframe
-data.insert(0, "Date", data.index, True)
-data.reset_index(drop=True, inplace=True)
+            future = m.make_future_dataframe(periods=(pd.to_datetime(end) - pd.to_datetime(start)).days)
+            forecast = m.predict(future)
 
-# Flatten MultiIndex columns if present
-if isinstance(data.columns, pd.MultiIndex):
-    data.columns = ['_'.join(col).strip() for col in data.columns.values]
+            forecast['ds'] = pd.to_datetime(forecast['ds'])
+            df_combined = pd.merge(forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']], df_train[['ds', 'y']], on='ds', how='left')
+            df_combined = df_combined.rename(columns={'y': 'Original Price', 'yhat': 'Predicted Price', 'yhat_lower': 'Lower Bound', 'yhat_upper': 'Upper Bound'})
+            df_combined = df_combined.set_index('ds')
 
-st.write('Data from', start_date, 'to', end_date)
-st.write(data)
+            st.subheader('Forecast Data')
+            st.write(df_combined)
 
-# Plot the data
-st.header('Data Visualization')
-st.subheader('Plot of the data')
-st.write("**Note:** Select your specific date range on the sidebar, or zoom in on the plot and select your specific column")
+            current_date = pd.to_datetime('today').normalize()
+            if current_date in df_combined.index:
+                current_data = df_combined.loc[current_date]
+                current_data_df = pd.DataFrame(current_data).T
+                st.subheader(f"Today's Data ({current_date.strftime('%Y-%m-%d')})")
+                st.write(current_data_df)
 
-try:
-    # Explicit column selection
-    cols_to_plot = [col for col in data.columns if col != 'Date']
+                original_price = current_data_df['Original Price'].values[0]
+                predicted_price = current_data_df['Predicted Price'].values[0]
+                percentage_change = ((predicted_price - original_price) / original_price) * 100
+                st.write(f"Percentage Change: {percentage_change:.2f}%")
+            else:
+                st.write(f"No data available for today's date ({current_date.strftime('%Y-%m-%d')}).")
 
-    # Data validation
-    for col in cols_to_plot:
-        if not pd.api.types.is_numeric_dtype(data[col]):
-            raise ValueError(f"Column '{col}' is not numeric.")
+            fig_plotly = go.Figure()
+            fig_plotly.add_trace(go.Scatter(x=df_train['ds'], y=df_train['y'], mode='lines', name='Original Price (Training)', hovertemplate='Date: %{x}<br>Price: %{y:.2f}'))
+            fig_plotly.add_trace(go.Scatter(x=future['ds'], y=forecast['yhat'], mode='lines', name='Predicted Price', hovertemplate='Date: %{x}<br>Predicted Price: %{y:.2f}'))
+            fig_plotly.add_trace(go.Scatter(x=future['ds'], y=forecast['yhat_upper'], mode='lines', line=dict(color='rgba(0, 128, 0, 0.2)'), name='Upper Bound', hoverinfo='none'))
+            fig_plotly.add_trace(go.Scatter(x=future['ds'], y=forecast['yhat_lower'], mode='lines', line=dict(color='rgba(0, 128, 0, 0.2)'), fill='tonexty', fillcolor='rgba(0, 128, 0, 0.2)', name='Lower Bound', hoverinfo='none'))
+            fig_plotly.update_layout(title='Original vs. Predicted Stock Price', xaxis_title='Time', yaxis_title='Price', hovermode='x unified')
+            st.plotly_chart(fig_plotly)
 
-    fig = px.line(data, x='Date', y=cols_to_plot, title='Closing price of the stock', width=1000, height=600)
-    st.plotly_chart(fig)
-except ValueError as e:
-    st.error(f"Plotting error: {e}")
-    # Fallback: plot only the first numeric column, excluding 'Date_'
-    numeric_cols = [col for col in data.columns if pd.api.types.is_numeric_dtype(data[col]) and col != 'Date_' and col != 'Date']
-    if numeric_cols:
-        first_numeric_col = numeric_cols[0]
-        fig = px.line(data, x='Date', y=first_numeric_col, title=f'Plotting {first_numeric_col} only', width=1000, height=600)
-        st.plotly_chart(fig)
-    else:
-        st.error("No numeric columns found for plotting.")
+            fig_components = m.plot_components(forecast)
 
-# Add a select box to choose the column for forecasting
-column = st.selectbox('Select the column to be used for forecasting', data.columns[1:])
+            for ax in fig_components.axes:
+                ax.grid(True, linestyle='--', alpha=0.7)
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+                ax.xaxis.set_major_locator(plt.MaxNLocator(5))
+                if ax.get_legend() is not None:
+                    ax.get_legend().remove()
 
-# Subsetting the data
-data = data[['Date', column]]
-st.write("Selected Data")
-st.write(data)
+            st.subheader('Forecast Components')
+            st.pyplot(fig_components)
 
-# Model selection
-models = ['Prophet']
-selected_model = st.sidebar.selectbox('Select the model for forecasting', models)
+            st.write("### Understanding Forecast Components")
+            st.write("""The following charts break down the forecast into its constituent parts, helping you understand the factors influencing the predictions.""")
 
-if selected_model == 'Prophet':
-    # Prophet Model
-    st.header('Facebook Prophet')
+            with st.expander("Trend: The Long-Term Direction"):
+                st.write("""This chart shows the overall long-term trend of the stock price. It represents the general direction the price is moving, independent of seasonal or weekly fluctuations. A positive trend indicates an upward movement over time, while a negative trend suggests a downward movement.""")
 
-    # Prepare the data for Prophet
-    prophet_data = data[['Date', column]]
-    prophet_data = prophet_data.rename(columns={'Date': 'ds', column: 'y'})
+            with st.expander("Weekly Seasonality: Patterns Within a Week"):
+                st.write("""This chart reveals any recurring patterns that occur within a week. For example, you might see that stock prices tend to be higher on certain days of the week and lower on others. This seasonality captures those weekly cycles.""")
 
-    # Create and fit the Prophet model
-    prophet_model = Prophet()
-    prophet_model.fit(prophet_data)
+            with st.expander("Yearly Seasonality: Patterns Within a Year"):
+                st.write("""This chart shows recurring patterns that happen over the course of a year. For instance, stock prices might be influenced by seasonal factors like holidays, earnings reports, or economic cycles that repeat annually.""")
 
-    # Forecast the future values
-    future = prophet_model.make_future_dataframe(periods=365)
-    forecast = prophet_model.predict(future)
+            if 'holidays' in forecast:
+                with st.expander("Holiday Effects: Impact of Special Events"):
+                    st.write("""This chart (if present) quantifies the impact of specific holidays on the stock price. It shows how the price tends to deviate from the baseline forecast around these dates.""")
 
-    # Plot the forecast
-    fig = prophet_model.plot(forecast)
-    plt.title('Forecast with Facebook Prophet')
-    plt.xlabel('Date')
-    plt.ylabel('Price')
-    st.pyplot(fig)
-
-st.write("Model selected:", selected_model)
-
-# urls of the images
-github_url = "https://img.icons8.com/fluent/48/000000/github.png"
-twitter_url = "https://img.icons8.com/color/40/000000/twitter.png"
-medium_url = "https://img.icons8.com/?size=48&id=BzFWSIqh6bCr&format=png"
-
-# redirect urls
-github_redirect_url = "https://github.com/Muhammad-Ali-Butt"
-twitter_redirect_url = "https://twitter.com/Data_Maestro"
-medium_redirect_url = "https://medium.com/@Data_Maestro"
-
-# adding a footer
-st.markdown("""
-<style>
-.footer {
-    position: fixed;
-    left: 0;
-    bottom: 0; 
-    width: 100%;
-    background-color: #f5f5f5;
-    color: #000000;
-    text-align: center;
-    padding: 10px;
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown(f'<div class="footer">Made with ❤️ by Muhammad Ali Butt<a href="{github_redirect_url}"><img src="{github_url}" width="30" height="30"></a>'
-            f'<a href="{twitter_redirect_url}"><img src="{twitter_url}" width="30" height="30"></a>'
-            f'<a href="{medium_redirect_url}"><img src="{medium_url}" width="30" height="30"></a> | Credits: Dr.Ammaar Tufail</div>', unsafe_allow_html=True)
+    except yf.YFinanceError as e:
+        st.error(f"Error downloading data from yfinance: {e}")
+    except ValueError as e:
+        st.error(f"Invalid input: {e}")
+    except Exception as e:
+        st.error(f"An unexpected error occurred: {e}")
