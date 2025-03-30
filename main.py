@@ -63,8 +63,8 @@ try:
     st.plotly_chart(fig)
 except ValueError as e:
     st.error(f"Plotting error: {e}")
-    # Fallback: plot only the first numeric column
-    first_numeric_col = next((col for col in data.columns if pd.api.types.is_numeric_dtype(data[col])), None)
+    # Fallback: plot only the first numeric column, excluding 'Date_'
+    first_numeric_col = next((col for col in data.columns if pd.api.types.is_numeric_dtype(data[col]) and col != 'Date_'), None)
     if first_numeric_col:
         fig = px.line(data, x='Date', y=first_numeric_col, title=f'Plotting {first_numeric_col} only', width=1000, height=600)
         st.plotly_chart(fig)
@@ -91,4 +91,41 @@ if selected_model == 'Prophet':
     prophet_data = data[['Date', column]]
     prophet_data = prophet_data.rename(columns={'Date': 'ds', column: 'y'})
 
-    # Create and fit
+    # Create and fit the Prophet model
+    prophet_model = Prophet()
+    prophet_model.fit(prophet_data)
+
+    # Forecast the future values
+    future = prophet_model.make_future_dataframe(periods=365)
+    forecast = prophet_model.predict(future)
+
+    # Plot the forecast
+    fig = prophet_model.plot(forecast)
+    plt.title('Forecast with Facebook Prophet')
+    plt.xlabel('Date')
+    plt.ylabel('Price')
+    st.pyplot(fig)
+
+st.write("Model selected:", selected_model)
+
+# urls of the images
+github_url = "https://img.icons8.com/fluent/48/000000/github.png"
+twitter_url = "https://img.icons8.com/color/48/000000/twitter.png"
+medium_url = "https://img.icons8.com/?size=48&id=BzFWSIqh6bCr&format=png"
+
+# redirect urls
+github_redirect_url = "https://github.com/Muhammad-Ali-Butt"
+twitter_redirect_url = "https://twitter.com/Data_Maestro"
+medium_redirect_url = "https://medium.com/@Data_Maestro"
+
+# adding a footer
+st.markdown("""
+<style>
+.footer {
+    position: fixed;
+    left: 0;
+    bottom: 0; 
+    width: 100%;
+    background-color: #f5f5f5;
+    color: #000000;
+    text
