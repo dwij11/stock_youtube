@@ -40,8 +40,9 @@ def plot_raw_data():
 plot_raw_data()
 
 # Predict forecast with Prophet.
-df_train = data[['Date', 'Close']].copy()
-df_train = df_train.rename(columns={"Date": "ds", "Close": "y"})
+df_train = data[['Date']].copy() #Only copy the date column.
+df_train['y'] = data['Close'].copy() #Create the y column as a series.
+df_train = df_train.rename(columns={"Date": "ds"})
 
 # Debugging: Check the type and content of the 'y' column
 st.write("Type of df_train['y'] before conversion:", type(df_train['y']))
