@@ -33,9 +33,11 @@ try:
         m = Prophet()
         m.fit(df_train)
 
-        future = m.make_future_dataframe(periods=365 * period)  # Predict for the selected period
+        # Calculate the future date range using pd.DateOffset
+        future = m.make_future_dataframe(periods=(end - df_train['ds'].max()).days)
         forecast = m.predict(future)
 
+        # Rest of your code remains the same...
         forecast['ds'] = pd.to_datetime(forecast['ds'])
         df_combined = pd.merge(forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']], df_train[['ds', 'y']], on='ds', how='left')
         df_combined = df_combined.rename(columns={'y': 'Original Price', 'yhat': 'Predicted Price', 'yhat_lower': 'Lower Bound', 'yhat_upper': 'Upper Bound'})
