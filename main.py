@@ -7,6 +7,7 @@ import plotly.express as px
 import datetime
 from datetime import date, timedelta
 from prophet import Prophet
+import matplotlib.pyplot as plt
 
 # setting the side bar to collapsed taa k footer jo ha wo sahi dikhay
 st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
