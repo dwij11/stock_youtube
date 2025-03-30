@@ -67,15 +67,7 @@ else:
 
             fig_components = m.plot_components(forecast)
 
-            for ax in fig_components.axes:
-                ax.grid(True, linestyle='--', alpha=0.7)
-                ax.spines['top'].set_visible(False)
-                ax.spines['right'].set_visible(False)
-                ax.xaxis.set_major_locator(plt.MaxNLocator(5))
-                if ax.get_legend() is not None:
-                    ax.get_legend().remove()
-
-            st.subheader('Forecast Components')
+            # Display the matplotlib plot directly.
             st.pyplot(fig_components)
 
             st.write("### Understanding Forecast Components")
