@@ -53,6 +53,19 @@ data = data.replace([np.inf, -np.inf], np.nan).dropna() #remove inf and nan.
 
 data = data.reset_index(drop=True) #reset index.
 
+# Debugging checks
+print("Columns in data:", data.columns)
+print("Numeric columns to plot:", numeric_cols)
+print("Data types:\n", data.dtypes)
+
+for col in numeric_cols:
+  if col not in data.columns:
+    st.error(f"Column '{col}' not found in DataFrame!")
+    st.stop()
+  if not pd.api.types.is_numeric_dtype(data[col]):
+    st.error(f"Column '{col}' is not numeric!")
+    st.stop()
+
 fig = px.line(data, x='Date', y=numeric_cols, title='Closing price of the stock', width=1000, height=600)
 st.plotly_chart(fig)
 
@@ -63,7 +76,6 @@ column = st.selectbox('Select the column to be used for forecasting', data.colum
 data = data[['Date', column]]
 st.write("Selected Data")
 st.write(data)
-
 
 # Model selection
 models = ['Prophet']
