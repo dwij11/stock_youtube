@@ -64,7 +64,7 @@ try:
 except ValueError as e:
     st.error(f"Plotting error: {e}")
     # Fallback: plot only the first numeric column, excluding 'Date_'
-    numeric_cols = [col for col in data.columns if pd.api.types.is_numeric_dtype(data[col]) and col != 'Date_']
+    numeric_cols = [col for col in data.columns if pd.api.types.is_numeric_dtype(data[col]) and col != 'Date_' and col != 'Date']
     if numeric_cols:
         first_numeric_col = numeric_cols[0]
         fig = px.line(data, x='Date', y=first_numeric_col, title=f'Plotting {first_numeric_col} only', width=1000, height=600)
