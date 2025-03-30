@@ -8,6 +8,7 @@ import datetime
 from datetime import date, timedelta
 from prophet import Prophet
 import matplotlib.pyplot as plt
+import numpy as np
 
 # setting the side bar to collapsed taa k footer jo ha wo sahi dikhay
 st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
@@ -44,6 +45,14 @@ st.header('Data Visualization')
 st.subheader('Plot of the data')
 st.write("**Note:** Select your specific date range on the sidebar, or zoom in on the plot and select your specific column")
 numeric_cols = data.columns.drop('Date').tolist()  # Convert to list
+
+for col in numeric_cols:
+    data[col] = pd.to_numeric(data[col], errors='coerce') #convert to numbers
+
+data = data.replace([np.inf, -np.inf], np.nan).dropna() #remove inf and nan.
+
+data = data.reset_index(drop=True) #reset index.
+
 fig = px.line(data, x='Date', y=numeric_cols, title='Closing price of the stock', width=1000, height=600)
 st.plotly_chart(fig)
 
