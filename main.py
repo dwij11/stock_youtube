@@ -43,7 +43,8 @@ st.write(data)
 st.header('Data Visualization')
 st.subheader('Plot of the data')
 st.write("**Note:** Select your specific date range on the sidebar, or zoom in on the plot and select your specific column")
-fig = px.line(data, x='Date', y=data.columns, title='Closing price of the stock', width=1000, height=600)
+numeric_cols = data.columns.drop('Date')  # Exclude 'Date' column
+fig = px.line(data, x='Date', y=numeric_cols, title='Closing price of the stock', width=1000, height=600)
 st.plotly_chart(fig)
 
 # Add a select box to choose the column for forecasting
