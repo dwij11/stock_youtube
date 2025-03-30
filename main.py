@@ -33,11 +33,14 @@ try:
         m = Prophet()
         m.fit(df_train)
 
-        # Calculate the future date range using pd.DateOffset
-        future = m.make_future_dataframe(periods=(end - df_train['ds'].max()).days)
+        # Calculate the number of days between the end date and the last training date
+        days_to_predict = (end - df_train['ds'].max()).days
+
+        # Use the calculated number of days as the periods
+        future = m.make_future_dataframe(periods=days_to_predict)
         forecast = m.predict(future)
 
-        # Rest of your code remains the same...
+        # Rest of your code...
         forecast['ds'] = pd.to_datetime(forecast['ds'])
         df_combined = pd.merge(forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']], df_train[['ds', 'y']], on='ds', how='left')
         df_combined = df_combined.rename(columns={'y': 'Original Price', 'yhat': 'Predicted Price', 'yhat_lower': 'Lower Bound', 'yhat_upper': 'Upper Bound'})
