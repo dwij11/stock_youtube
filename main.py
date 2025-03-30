@@ -39,7 +39,7 @@ try:
     st.subheader('Forecast Data')
     st.write(df_combined)
 
-    current_date = pd.todatetime('today').normalize()
+    current_date = pd.to_datetime('today').normalize() #Corrected line
     if current_date in df_combined.index:
         current_data = df_combined.loc[current_date]
         current_data_df = pd.DataFrame(current_data).T
