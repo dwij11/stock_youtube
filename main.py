@@ -34,9 +34,10 @@ try:
         model = Prophet()
         model.fit(df_prophet)
 
-        # Generate future dataframe for predictions
-        future_days = (end_date - df_prophet['ds'].max()).days
-        future_dataframe = model.make_future_dataframe(periods=future_days)
+        # Calculate the future date range using pd.Timedelta
+        future_days = (end_date - df_prophet['ds'].max())
+        future_dataframe = model.make_future_dataframe(periods=future_days.days) #added .days
+
         forecast = model.predict(future_dataframe)
 
         # Rest of your code...
