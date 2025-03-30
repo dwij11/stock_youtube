@@ -128,4 +128,12 @@ st.markdown("""
     width: 100%;
     background-color: #f5f5f5;
     color: #000000;
-    text
+    text-align: center;
+    padding: 10px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown(f'<div class="footer">Made with ❤️ by Muhammad Ali Butt<a href="{github_redirect_url}"><img src="{github_url}" width="30" height="30"></a>'
+            f'<a href="{twitter_redirect_url}"><img src="{twitter_url}" width="30" height="30"></a>'
+            f'<a href="{medium_redirect_url}"><img src="{medium_url}" width="30" height="30"></a> | Credits: Dr.Ammaar Tufail</div>', unsafe_allow_html=True)
