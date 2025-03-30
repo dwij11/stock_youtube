@@ -26,8 +26,8 @@ try:
         st.subheader(f'Stock Data for {stock_symbol}')
         st.write(stock_data)
 
-        # Prepare data for Prophet
-        df_prophet = pd.DataFrame({'ds': stock_data.index, 'y': stock_data['Close']}).reset_index(drop=True)
+        # Prepare data for Prophet - Ensure 'y' is 1D
+        df_prophet = pd.DataFrame({'ds': stock_data.index, 'y': stock_data['Close'].values.ravel()}).reset_index(drop=True)
         df_prophet = df_prophet.dropna(subset=['y'])
 
         # Train Prophet model
@@ -39,7 +39,8 @@ try:
         future_dataframe = model.make_future_dataframe(periods=future_days)
         forecast = model.predict(future_dataframe)
 
-        # Display forecast data
+        # Rest of your code...
+        # ... (Display forecast, plots, etc.) ...
         st.subheader(f'Forecast for {stock_symbol}')
         forecast_display = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].set_index('ds')
         st.write(forecast_display)
