@@ -40,28 +40,38 @@ def plot_raw_data():
 plot_raw_data()
 
 # Predict forecast with Prophet.
-df_train = data[['Date', 'Close']].copy() #added .copy()
+df_train = data[['Date', 'Close']].copy()
 df_train = df_train.rename(columns={"Date": "ds", "Close": "y"})
 
-# Force numeric conversion with error handling
-df_train['y'] = pd.to_numeric(df_train['y'], errors='coerce')
+# Debugging: Check the type and content of the 'y' column
+st.write("Type of df_train['y'] before conversion:", type(df_train['y']))
+st.write("Sample values of df_train['y']:", df_train['y'].head())
 
-# Remove NaN values that may have resulted from conversion
-df_train = df_train.dropna(subset=['y'])
+try:
+    # Force numeric conversion with error handling
+    df_train['y'] = pd.to_numeric(df_train['y'], errors='coerce')
 
-m = Prophet()
-m.fit(df_train)
-future = m.make_future_dataframe(periods=period)
-forecast = m.predict(future)
+    # Remove NaN values that may have resulted from conversion
+    df_train = df_train.dropna(subset=['y'])
 
-# Show and plot forecast
-st.subheader('Forecast data')
-st.write(forecast.tail())
+    m = Prophet()
+    m.fit(df_train)
+    future = m.make_future_dataframe(periods=period)
+    forecast = m.predict(future)
 
-st.write(f'Forecast plot for {n_years} years')
-fig1 = plot_plotly(m, forecast)
-st.plotly_chart(fig1)
+    # Show and plot forecast
+    st.subheader('Forecast data')
+    st.write(forecast.tail())
 
-st.write("Forecast components")
-fig2 = m.plot_components(forecast)
-st.write(fig2)
+    st.write(f'Forecast plot for {n_years} years')
+    fig1 = plot_plotly(m, forecast)
+    st.plotly_chart(fig1)
+
+    st.write("Forecast components")
+    fig2 = m.plot_components(forecast)
+    st.write(fig2)
+
+except TypeError as e:
+    st.error(f"Error during numeric conversion: {e}")
+except Exception as e:
+    st.error(f"An unexpected error occurred: {e}")
