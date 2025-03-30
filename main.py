@@ -37,6 +37,11 @@ data = yf.download(ticker, start=start_date, end=end_date)
 # Add Date as a column to the dataframe
 data.insert(0, "Date", data.index, True)
 data.reset_index(drop=True, inplace=True)
+
+# Flatten MultiIndex columns if present
+if isinstance(data.columns, pd.MultiIndex):
+    data.columns = ['_'.join(col).strip() for col in data.columns.values]
+
 st.write('Data from', start_date, 'to', end_date)
 st.write(data)
 
@@ -86,49 +91,4 @@ if selected_model == 'Prophet':
     prophet_data = data[['Date', column]]
     prophet_data = prophet_data.rename(columns={'Date': 'ds', column: 'y'})
 
-    # Create and fit the Prophet model
-    prophet_model = Prophet()
-    prophet_model.fit(prophet_data)
-
-    # Forecast the future values
-    future = prophet_model.make_future_dataframe(periods=365)
-    forecast = prophet_model.predict(future)
-
-    # Plot the forecast
-    fig = prophet_model.plot(forecast)
-    plt.title('Forecast with Facebook Prophet')
-    plt.xlabel('Date')
-    plt.ylabel('Price')
-    st.pyplot(fig)
-
-st.write("Model selected:", selected_model)
-
-# urls of the images
-github_url = "https://img.icons8.com/fluent/48/000000/github.png"
-twitter_url = "https://img.icons8.com/color/48/000000/twitter.png"
-medium_url = "https://img.icons8.com/?size=48&id=BzFWSIqh6bCr&format=png"
-
-# redirect urls
-github_redirect_url = "https://github.com/Muhammad-Ali-Butt"
-twitter_redirect_url = "https://twitter.com/Data_Maestro"
-medium_redirect_url = "https://medium.com/@Data_Maestro"
-
-# adding a footer
-st.markdown("""
-<style>
-.footer {
-    position: fixed;
-    left: 0;
-    bottom: 0; 
-    width: 100%;
-    background-color: #f5f5f5;
-    color: #000000;
-    text-align: center;
-    padding: 10px;
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown(f'<div class="footer">Made with ❤️ by Muhammad Ali Butt<a href="{github_redirect_url}"><img src="{github_url}" width="30" height="30"></a>'
-            f'<a href="{twitter_redirect_url}"><img src="{twitter_url}" width="30" height="30"></a>'
-            f'<a href="{medium_redirect_url}"><img src="{medium_url}" width="30" height="30"></a> | Credits: Dr.Ammaar Tufail</div>', unsafe_allow_html=True)
+    # Create and fit
