@@ -10,7 +10,7 @@ st.header('Stock Market Predictor')
 
 stock = st.text_input('Enter Stock Symbol', 'GOOG').upper()
 start = st.date_input('Start Date', pd.to_datetime('2021-01-01'))
-end = st.date_input('End Date', pd.to_datetime('2025-01-31'))
+end = st.date_input('End Date', pd.to_datetime('2025-05-31'))
 
 if start >= end:
     st.error('Error: Start date must be before end date.')
